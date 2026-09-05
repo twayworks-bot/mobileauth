@@ -17,6 +17,15 @@ app.include_router(routes.router)
 async def health_check():
     return {"status": "ok", "service": "auth"}
 
+# Redirect /auth and /auth/ to /auth/login for uniform entry point
+@app.get("/auth")
+async def auth_root():
+    return RedirectResponse(url="/auth/login")
+
+@app.get("/auth/")
+async def auth_slash_root():
+    return RedirectResponse(url="/auth/login")
+
 # Redirect root endpoint to /auth/login for uniform entry point
 @app.get("/")
 async def root():
