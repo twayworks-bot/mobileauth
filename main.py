@@ -24,6 +24,6 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    # Start ASGI Server on port 8000
-    print("Starting holyseeds authentication service on http://localhost:8000...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Start ASGI Server on port 5000
+    print("Starting holyseeds authentication service on http://localhost:5000...")
+    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True)
