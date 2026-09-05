@@ -139,6 +139,9 @@
         {% endif %}
 
         <form action="/auth/login" method="post">
+            {% if redirect %}
+            <input type="hidden" name="redirect" value="{{ redirect }}">
+            {% endif %}
             <div class="form-group">
                 <label for="phone_number">전화번호 (ID)</label>
                 <input type="text" id="phone_number" name="phone_number" placeholder="예: 01012345678" required>

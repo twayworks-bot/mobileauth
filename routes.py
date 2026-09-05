@@ -20,21 +20,23 @@ def get_current_user(request: Request):
 
 # UI: Login page
 @router.get("/login", response_class=HTMLResponse)
-async def login_get(request: Request, msg: str = None, error: str = None):
+async def login_get(request: Request, msg: str = None, error: str = None, redirect: str = None):
     # If already logged in, redirect to profile
     user = get_current_user(request)
     if user:
-        return RedirectResponse(url="/auth/profile", status_code=status.HTTP_303_SEE_OTHER)
-    return templates.TemplateResponse(request, "login.html", {"msg": msg, "error": error})
+        url = redirect if redirect else "/auth/profile"
+        return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request, "login.html", {"msg": msg, "error": error, "redirect": redirect})
 
 # Action: Login process
 @router.post("/login")
-async def login_post(request: Request, phone_number: str = Form(...), pin: str = Form(...)):
+async def login_post(request: Request, phone_number: str = Form(...), pin: str = Form(...), redirect: str = Form(None)):
     print(f"\n[HTTP POST /auth/login] Received login submission for: phone={phone_number}")
     res = keycloak_api.login_verify_pin(phone_number, pin)
     if res["success"]:
         user = res["user"]
-        response = RedirectResponse(url="/auth/profile", status_code=status.HTTP_303_SEE_OTHER)
+        url = redirect if redirect else "/auth/profile"
+        response = RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
         # Store user ID in HTTPOnly cookie for secure session management
         response.set_cookie(key="auth_session", value=user["id"], httponly=True, path="/")
         print(f"[HTTP POST /auth/login] Login success. Setting session cookie for user_id={user['id']}")
@@ -43,7 +45,8 @@ async def login_post(request: Request, phone_number: str = Form(...), pin: str =
         print(f"[HTTP POST /auth/login] Login failed. Error: {res['error']}")
         return templates.TemplateResponse(request, "login.html", {
             "error": res["error"],
-            "phone_number": phone_number
+            "phone_number": phone_number,
+            "redirect": redirect
         })
 
 # Action: Logout
@@ -157,3 +160,28 @@ async def users_toggle_manager(request: Request, user_id: str, is_mgr: str = For
     else:
         print(f"[HTTP POST /auth/users/{user_id}/toggle-manager] Failed to update manager status. Error: {res['error']}")
         return RedirectResponse(url=f"/auth/users?error={urllib.parse.quote(res['error'])}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# API Action: Verify Session (called by other services like booking3)
+@router.get("/api/verify-session")
+async def verify_session(request: Request, session_id: str = None):
+    if not session_id:
+        session_id = request.cookies.get("auth_session")
+    if not session_id:
+        return {"valid": False, "is_manager": False, "error": "No session ID provided"}
+    
+    user = keycloak_api.find_user_by_id(session_id)
+    if not user:
+        return {"valid": False, "is_manager": False, "error": "User not found"}
+    
+    is_mgr = keycloak_api.is_manager(user)
+    return {
+        "valid": True,
+        "is_manager": is_mgr,
+        "user": {
+            "id": user.get("id"),
+            "username": user.get("username"),
+            "name": user.get("firstName"),
+            "email": user.get("email")
+        }
+    }
