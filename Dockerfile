@@ -30,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=5s \
     CMD python -c "import requests; requests.get('http://localhost:5000/auth/api/status')"
 
 # 8. 컨테이너 기동 시 실 구동 커맨드 설정 (요청하신 Gunicorn 커맨드 준수)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--log-level", "debug", "--access-logfile", "-", "--error-logfile", "-", "--capture-output", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--log-level", "debug", "--access-logfile", "-", "--error-logfile", "-", "--capture-output", "main:app"]
