@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 - Keycloak 전화번호 인증</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 {
+            color: #333333;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        p.subtitle {
+            color: #666666;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            color: #555555;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+        .btn {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+        .btn:hover {
+            background-color: #357abd;
+        }
+        .links {
+            margin-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        .links a {
+            color: #4a90e2;
+            text-decoration: none;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            background-color: #ffeef0;
+            border: 1px solid #ffccd3;
+            color: #d9383a;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .success {
+            background-color: #e6f6ff;
+            border: 1px solid #b3e5ff;
+            color: #0077cc;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .nav-link {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+        .nav-link a {
+            color: #666;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>전화번호 로그인</h2>
+        <p class="subtitle">공통 인증 서비스 (Proxy Mode)</p>
+        
+        {% if error %}
+        <div class="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if msg %}
+        <div class="success">
+            {{ msg }}
+        </div>
+        {% endif %}
+
+        <form action="/auth/login" method="post">
+            <div class="form-group">
+                <label for="phone_number">전화번호 (ID)</label>
+                <input type="text" id="phone_number" name="phone_number" placeholder="예: 01012345678" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="pin">PIN 번호 (패스워드)</label>
+                <input type="password" id="pin" name="pin" placeholder="PIN 번호 입력" required>
+            </div>
+            
+            <button type="submit" class="btn">로그인</button>
+        </form>
+
+        <div class="links">
+            <a href="/auth/signup">신규 회원가입</a>
+            <a href="/auth/users">사용자 리스트 (CRUD)</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+.env.bak
+
+# Git / Source Control
+.git
+.gitignore
+
+# Project Specific
+OLD/
+syncgithub.env
+syncgithub.py
+history.md
+plan.md
+plan-web.md
+README.md
+requirements.md

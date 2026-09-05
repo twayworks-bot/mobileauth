@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사용자 리스트 - Keycloak 전화번호 인증</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 950px;
+        }
+        h2 {
+            color: #333333;
+            margin-bottom: 8px;
+            font-size: 24px;
+            text-align: center;
+        }
+        p.subtitle {
+            color: #666666;
+            font-size: 14px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 20px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f1f3f5;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .badge-success {
+            background-color: #d3f9d8;
+            color: #2b8a3e;
+        }
+        .btn-delete {
+            background-color: #e03131;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-delete:hover {
+            background-color: #c92a2a;
+        }
+        .btn-toggle {
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-toggle:hover {
+            filter: brightness(0.9);
+        }
+        .alert {
+            background-color: #ffeef0;
+            border: 1px solid #ffccd3;
+            color: #d9383a;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .success {
+            background-color: #e6f6ff;
+            border: 1px solid #b3e5ff;
+            color: #0077cc;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .header-links {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .header-links a {
+            color: #4a90e2;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .header-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>사용자 권한 관리 (CRUD)</h2>
+        <p class="subtitle">Manager(1) 권한이 있는 관리자 계정 전용 화면입니다.</p>
+
+        {% if error %}
+        <div class="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if msg %}
+        <div class="success">
+            {{ msg }}
+        </div>
+        {% endif %}
+
+        <div class="header-links">
+            <div>
+                <a href="/auth/login">← 로그인 화면</a>
+                &nbsp;|&nbsp;
+                <a href="/auth/signup">신규 유저 가입</a>
+            </div>
+            <div>
+                <a href="/auth/profile" style="color: #2ecc71;">내 프로필 가기</a>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>UUID (Keycloak ID)</th>
+                        <th>ID (전화번호)</th>
+                        <th>이름</th>
+                        <th>이메일</th>
+                        <th>상태 / 권한</th>
+                        <th>관리자 설정</th>
+                        <th>동작</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if users %}
+                        {% for u in users %}
+                        <tr>
+                            <td style="font-family: monospace; font-size: 11px; color: #666;">{{ u.id }}</td>
+                            <td><strong>{{ u.username }}</strong></td>
+                            <td>{{ u.firstName or 'N/A' }}</td>
+                            <td>{{ u.email or 'N/A' }}</td>
+                            <td>
+                                {% if u.enabled %}
+                                <span class="badge badge-success">활성화됨</span>
+                                {% else %}
+                                <span class="badge" style="background-color: #e9ecef; color: #495057;">비활성화</span>
+                                {% endif %}
+                                <br>
+                                {% if u.is_manager_flag %}
+                                <span class="badge" style="background-color: #e8f7ff; color: #1c7ed6; margin-top: 4px;">관리자 (1)</span>
+                                {% else %}
+                                <span class="badge" style="background-color: #f8f9fa; color: #868e96; margin-top: 4px; border: 1px solid #dee2e6;">일반회원 (0)</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if u.username == '01055787363' %}
+                                <span style="font-size: 11px; color: #868e96; font-style: italic; font-weight: bold;">[최상위 개발계정]</span>
+                                {% else %}
+                                <form action="/auth/users/{{ u.id }}/toggle-manager" method="post" style="display:inline;">
+                                    <input type="hidden" name="is_mgr" value="{% if u.is_manager_flag %}0{% else %}1{% endif %}">
+                                    <button type="submit" class="btn-toggle" style="background-color: {% if u.is_manager_flag %}#adb5bd{% else %}#12b886{% endif %};">
+                                        {% if u.is_manager_flag %}일반 회원으로 변경{% else %}관리자(1) 지정{% endif %}
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if u.id == current_user.id %}
+                                <span style="font-size: 11px; color: #adb5bd; font-style: italic;">본인계정</span>
+                                {% else %}
+                                <form action="/auth/users/{{ u.id }}/delete" method="post" onsubmit="return confirm('정말 이 사용자를 삭제하시겠습니까?');" style="display:inline;">
+                                    <button type="submit" class="btn-delete">삭제</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #868e96; padding: 30px;">
+                                등록된 사용자가 없습니다.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

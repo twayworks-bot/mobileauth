@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 프로필 - Keycloak 전화번호 인증</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        h2 {
+            color: #333333;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        p.subtitle {
+            color: #666666;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            text-align: left;
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            color: #555555;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+            background-color: #fff;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+        input[readonly] {
+            background-color: #f1f3f5;
+            color: #495057;
+            cursor: not-allowed;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+        }
+        .btn {
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 13px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            flex: 1;
+        }
+        .btn-primary {
+            background-color: #4a90e2;
+        }
+        .btn-primary:hover {
+            background-color: #357abd;
+        }
+        .btn-danger {
+            background-color: #e03131;
+        }
+        .btn-danger:hover {
+            background-color: #c92a2a;
+        }
+        .alert {
+            background-color: #ffeef0;
+            border: 1px solid #ffccd3;
+            color: #d9383a;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .success {
+            background-color: #e6f6ff;
+            border: 1px solid #b3e5ff;
+            color: #0077cc;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .links {
+            margin-top: 24px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .links a {
+            color: #4a90e2;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>내 프로필 관리</h2>
+        <p class="subtitle">인증된 회원님의 소중한 개인정보입니다.</p>
+        
+        {% if error %}
+        <div class="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if msg %}
+        <div class="success">
+            {{ msg }}
+        </div>
+        {% endif %}
+
+        <form action="/auth/profile" method="post">
+            <div class="form-group">
+                <label for="user_id">사용자 UUID (Keycloak ID)</label>
+                <input type="text" id="user_id" value="{{ user.id }}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="phone_number">전화번호 (ID / 변경불가)</label>
+                <input type="text" id="phone_number" value="{{ user.username }}" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label for="name">이름 (Name)</label>
+                <input type="text" id="name" name="name" value="{{ user.firstName }}" placeholder="이름" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">이메일 주소</label>
+                <input type="email" id="email" name="email" value="{{ user.email }}" placeholder="이메일" required>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">프로필 수정 저장</button>
+                <a href="/auth/logout" class="btn btn-danger" style="text-align: center; text-decoration: none; line-height: 1.2;">로그아웃</a>
+            </div>
+        </form>
+
+        {% if is_manager %}
+        <div class="links" style="justify-content: center; margin-top: 30px;">
+            <a href="/auth/users" style="color: #2ecc71; font-weight: bold; font-size: 16px;">★ 사용자 권한 관리 (CRUD Dashboard)</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

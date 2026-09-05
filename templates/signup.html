@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 - Keycloak 전화번호 인증</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h2 {
+            color: #333333;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        p.subtitle {
+            color: #666666;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            text-align: left;
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            color: #555555;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+        .btn {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 15px;
+        }
+        .btn:hover {
+            background-color: #27ae60;
+        }
+        .links {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .links a {
+            color: #2ecc71;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            background-color: #ffeef0;
+            border: 1px solid #ffccd3;
+            color: #d9383a;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>사용자 가입 (Signup)</h2>
+        <p class="subtitle">필수 정보를 입력하여 신규 계정을 등록하세요.</p>
+        
+        {% if error %}
+        <div class="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form action="/auth/signup" method="post">
+            <div class="form-group">
+                <label for="phone_number">전화번호 (로그인 ID로 사용)</label>
+                <input type="text" id="phone_number" name="phone_number" placeholder="예: 01012345678" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="name">이름 (Name)</label>
+                <input type="text" id="name" name="name" placeholder="홍길동" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">이메일 주소 (이메일 필수)</label>
+                <input type="email" id="email" name="email" placeholder="example@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="pin">PIN 번호 (패스워드)</label>
+                <input type="password" id="pin" name="pin" placeholder="비밀번호로 사용할 핀 번호 입력" required>
+            </div>
+            
+            <button type="submit" class="btn">가입 완료하기</button>
+        </form>
+
+        <div class="links">
+            이미 계정이 있으신가요? <a href="/auth/login">로그인 하러가기</a>
+        </div>
+    </div>
+</body>
+</html>
