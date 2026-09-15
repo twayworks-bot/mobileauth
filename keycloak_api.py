@@ -292,26 +292,18 @@ def update_profile(user_id, name, email, phone_number=None):
         err_msg = body.get("errorMessage") if isinstance(body, dict) else str(body)
         return {"success": False, "error": f"프로필 수정을 실패했습니다. (응답: {err_msg})"}
 
-def delete_user(user_id):
-    """Deletes a user from Keycloak."""
-    status, _, _ = request_api("DELETE", f"/admin/realms/{TARGET_REALM}/users/{user_id}")
-    if status == 204:
-        return {"success": True}
-    return {"success": False, "error": f"사용자 삭제에 실패했습니다. (Status: {status})"}
-
-def is_manager(user: dict) -> bool:
-    """Checks if a user is an administrator (manager flag == "1" or bootstrap number)."""
+def verify_user_pin(user: dict, entered_pin: str) -> bool:
+    """Verifies if the entered PIN matches the user's stored PIN hash."""
     if not user:
         return False
-    # Bootstrap: Phone number 01055787363 is always manager by default
-    if user.get("username") == "01055787363":
-        return True
     attributes = user.get("attributes", {})
-    manager_flag = attributes.get("manager", [""])[0] if attributes.get("manager") else ""
-    return manager_flag == "1"
+    hashed_pin = attributes.get("pinNumber", [""])[0] if attributes.get("pinNumber") else ""
+    if not hashed_pin:
+        return False
+    return verify_pin_hash(entered_pin, hashed_pin)
 
-def set_user_manager_status(user_id: str, is_mgr: bool):
-    """Sets a user's manager attribute to "1" or "0"."""
+def update_pin(user_id: str, new_pin: str) -> dict:
+    """Updates a user's pinNumber attribute with a newly hashed PIN."""
     user = find_user_by_id(user_id)
     if not user:
         return {"success": False, "error": "사용자를 찾을 수 없습니다."}
@@ -319,11 +311,74 @@ def set_user_manager_status(user_id: str, is_mgr: bool):
     if "attributes" not in user:
         user["attributes"] = {}
         
-    user["attributes"]["manager"] = ["1" if is_mgr else "0"]
+    hashed_pin = hash_pin(new_pin)
+    user["attributes"]["pinNumber"] = [hashed_pin]
     
     status, _, body = request_api("PUT", f"/admin/realms/{TARGET_REALM}/users/{user_id}", user)
     if status in (200, 204):
         return {"success": True}
     else:
         err_msg = body.get("errorMessage") if isinstance(body, dict) else str(body)
-        return {"success": False, "error": f"관리자 권한 변경에 실패했습니다. (응답: {err_msg})"}
+        return {"success": False, "error": f"PIN 번호 변경에 실패했습니다. (응답: {err_msg})"}
+
+def delete_user(user_id):
+    """Deletes a user from Keycloak."""
+    status, _, _ = request_api("DELETE", f"/admin/realms/{TARGET_REALM}/users/{user_id}")
+    if status == 204:
+        return {"success": True}
+    return {"success": False, "error": f"사용자 삭제에 실패했습니다. (Status: {status})"}
+
+def get_user_role_flag(user: dict) -> str:
+    """
+    Returns the role flag of a user:
+    "2": Super Admin (사용자 권한 관리 및 모든 기능)
+    "1": Admin / Manager (일반 관리자 기능)
+    "0": General User (일반 회원)
+    """
+    if not user:
+        return "0"
+    # Bootstrap: Phone number 01055787363 is always Super Admin (flag="2")
+    if user.get("username") == "01055787363":
+        return "2"
+    attributes = user.get("attributes", {})
+    manager_flag = attributes.get("manager", ["0"])[0] if attributes.get("manager") else "0"
+    if manager_flag in ("1", "2"):
+        return manager_flag
+    return "0"
+
+def is_super(user: dict) -> bool:
+    """Checks if a user is a super administrator (flag == '2'). Can manage users and permissions."""
+    return get_user_role_flag(user) == "2"
+
+def is_manager(user: dict) -> bool:
+    """Checks if a user is an administrator or higher (flag == '1' or '2'). Can access admin features."""
+    return get_user_role_flag(user) in ("1", "2")
+
+def set_user_role(user_id: str, role_flag: str) -> dict:
+    """Sets a user's manager attribute to '0', '1', or '2'."""
+    if role_flag not in ("0", "1", "2"):
+        return {"success": False, "error": "유효하지 않은 권한 등급 플래그입니다. (0, 1, 2만 허용)"}
+        
+    user = find_user_by_id(user_id)
+    if not user:
+        return {"success": False, "error": "사용자를 찾을 수 없습니다."}
+        
+    # Prevent changing bootstrap account
+    if user.get("username") == "01055787363":
+        return {"success": False, "error": "최상위 개발자 계정의 권한은 변경할 수 없습니다."}
+        
+    if "attributes" not in user:
+        user["attributes"] = {}
+        
+    user["attributes"]["manager"] = [role_flag]
+    
+    status, _, body = request_api("PUT", f"/admin/realms/{TARGET_REALM}/users/{user_id}", user)
+    if status in (200, 204):
+        return {"success": True}
+    else:
+        err_msg = body.get("errorMessage") if isinstance(body, dict) else str(body)
+        return {"success": False, "error": f"사용자 권한 변경에 실패했습니다. (응답: {err_msg})"}
+
+def set_user_manager_status(user_id: str, is_mgr: bool):
+    """Backward compatibility helper. Sets manager attribute to '1' or '0'."""
+    return set_user_role(user_id, "1" if is_mgr else "0")

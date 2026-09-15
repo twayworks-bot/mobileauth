@@ -25,7 +25,7 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
             padding: 40px;
             width: 100%;
-            max-width: 950px;
+            max-width: 1020px;
         }
         h2 {
             color: #333333;
@@ -52,7 +52,7 @@
             font-size: 14px;
         }
         th, td {
-            padding: 12px 15px;
+            padding: 12px 14px;
             border-bottom: 1px solid #dee2e6;
             vertical-align: middle;
         }
@@ -62,7 +62,7 @@
             font-weight: bold;
         }
         tr:hover {
-            background-color: #f1f3f5;
+            background-color: #f8fafc;
         }
         .badge {
             display: inline-block;
@@ -76,6 +76,48 @@
             background-color: #d3f9d8;
             color: #2b8a3e;
         }
+        .badge-super {
+            background-color: #f3d9fa;
+            color: #ae3ec9;
+            border: 1px solid #e599f7;
+        }
+        .badge-admin {
+            background-color: #e8f7ff;
+            color: #1c7ed6;
+            border: 1px solid #a5d8ff;
+        }
+        .badge-user {
+            background-color: #f8f9fa;
+            color: #868e96;
+            border: 1px solid #dee2e6;
+        }
+        .role-select {
+            padding: 5px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+            background-color: #fff;
+            cursor: pointer;
+        }
+        .role-select:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+        .btn-change-role {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+        }
+        .btn-change-role:hover {
+            background-color: #357abd;
+        }
         .btn-delete {
             background-color: #e03131;
             color: white;
@@ -86,22 +128,10 @@
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.2s;
+            white-space: nowrap;
         }
         .btn-delete:hover {
             background-color: #c92a2a;
-        }
-        .btn-toggle {
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .btn-toggle:hover {
-            filter: brightness(0.9);
         }
         .alert {
             background-color: #ffeef0;
@@ -141,7 +171,7 @@
 <body>
     <div class="container">
         <h2>사용자 권한 관리 (CRUD)</h2>
-        <p class="subtitle">Manager(1) 권한이 있는 관리자 계정 전용 화면입니다.</p>
+        <p class="subtitle">Super (2) 권한을 가진 최고 관리자 전용 화면입니다. (일반 관리자 1은 접근 불가)</p>
 
         {% if error %}
         <div class="alert">
@@ -162,7 +192,7 @@
                 <a href="/auth/signup">신규 유저 가입</a>
             </div>
             <div>
-                <a href="/auth/profile" style="color: #2ecc71;">내 프로필 가기</a>
+                <a href="/auth/profile" style="color: #ae3ec9;">내 프로필 가기</a>
             </div>
         </div>
 
@@ -174,8 +204,8 @@
                         <th>ID (전화번호)</th>
                         <th>이름</th>
                         <th>이메일</th>
-                        <th>상태 / 권한</th>
-                        <th>관리자 설정</th>
+                        <th>계정 상태 / 현재 권한</th>
+                        <th>권한 등급 설정 (0/1/2)</th>
                         <th>동작</th>
                     </tr>
                 </thead>
@@ -189,31 +219,37 @@
                             <td>{{ u.email or 'N/A' }}</td>
                             <td>
                                 {% if u.enabled %}
-                                <span class="badge badge-success">활성화됨</span>
+                                <span class="badge badge-success">활성화</span>
                                 {% else %}
                                 <span class="badge" style="background-color: #e9ecef; color: #495057;">비활성화</span>
                                 {% endif %}
                                 <br>
-                                {% if u.is_manager_flag %}
-                                <span class="badge" style="background-color: #e8f7ff; color: #1c7ed6; margin-top: 4px;">관리자 (1)</span>
+                                {% if u.role_flag == '2' %}
+                                <span class="badge badge-super" style="margin-top: 4px;">슈퍼관리자 (2)</span>
+                                {% elif u.role_flag == '1' %}
+                                <span class="badge badge-admin" style="margin-top: 4px;">일반관리자 (1)</span>
                                 {% else %}
-                                <span class="badge" style="background-color: #f8f9fa; color: #868e96; margin-top: 4px; border: 1px solid #dee2e6;">일반회원 (0)</span>
+                                <span class="badge badge-user" style="margin-top: 4px;">일반회원 (0)</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if u.username == '01055787363' %}
-                                <span style="font-size: 11px; color: #868e96; font-style: italic; font-weight: bold;">[최상위 개발계정]</span>
+                                <span style="font-size: 12px; color: #ae3ec9; font-weight: bold;">[최상위 개발계정]</span>
                                 {% else %}
-                                <form action="/auth/users/{{ u.id }}/toggle-manager" method="post" style="display:inline;">
-                                    <input type="hidden" name="is_mgr" value="{% if u.is_manager_flag %}0{% else %}1{% endif %}">
-                                    <button type="submit" class="btn-toggle" style="background-color: {% if u.is_manager_flag %}#adb5bd{% else %}#12b886{% endif %};">
-                                        {% if u.is_manager_flag %}일반 회원으로 변경{% else %}관리자(1) 지정{% endif %}
-                                    </button>
+                                <form action="/auth/users/{{ u.id }}/set-role" method="post" style="display:inline-flex; align-items:center; gap: 6px;">
+                                    <select name="role" class="role-select">
+                                        <option value="0" {% if u.role_flag == '0' %}selected{% endif %}>일반회원 (0)</option>
+                                        <option value="1" {% if u.role_flag == '1' %}selected{% endif %}>관리자 (1)</option>
+                                        <option value="2" {% if u.role_flag == '2' %}selected{% endif %}>슈퍼관리자 (2)</option>
+                                    </select>
+                                    <button type="submit" class="btn-change-role">변경</button>
                                 </form>
                                 {% endif %}
                             </td>
                             <td>
-                                {% if u.id == current_user.id %}
+                                {% if u.username == '01055787363' %}
+                                <span style="font-size: 11px; color: #adb5bd; font-style: italic;">보호됨</span>
+                                {% elif u.id == current_user.id %}
                                 <span style="font-size: 11px; color: #adb5bd; font-style: italic;">본인계정</span>
                                 {% else %}
                                 <form action="/auth/users/{{ u.id }}/delete" method="post" onsubmit="return confirm('정말 이 사용자를 삭제하시겠습니까?');" style="display:inline;">

@@ -129,11 +129,28 @@
             
             <div class="form-group">
                 <label for="pin">PIN 번호 (패스워드)</label>
-                <input type="password" id="pin" name="pin" placeholder="비밀번호로 사용할 핀 번호 입력" required>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" id="pin" name="pin" placeholder="비밀번호로 사용할 핀 번호 입력" required style="padding-right: 40px;">
+                    <button type="button" onclick="toggleSignupPinVisibility()" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #777;" title="비밀번호 보기">👁️</button>
+                </div>
             </div>
             
             <button type="submit" class="btn">가입 완료하기</button>
         </form>
+
+        <script>
+            function toggleSignupPinVisibility() {
+                const pinInput = document.getElementById('pin');
+                const btn = event.currentTarget;
+                if (pinInput.type === 'password') {
+                    pinInput.type = 'text';
+                    btn.textContent = '🔒';
+                } else {
+                    pinInput.type = 'password';
+                    btn.textContent = '👁️';
+                }
+            }
+        </script>
 
         <div class="links">
             이미 계정이 있으신가요? <a href="/auth/login">로그인 하러가기</a>

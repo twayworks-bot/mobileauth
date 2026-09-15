@@ -19,25 +19,27 @@ FastAPI와 Jinja2 템플릿 엔진을 활용하여 구축되었으며, 로컬 �
 3. **Keycloak 선언적 유저 프로필 자동 구성**
    - Keycloak Target Realm(`holyseeds`)의 declarative user profile 제약에 대응하여, 커스텀 속성(`phoneNumber`, `pinNumber`, `manager`)을 Keycloak REST API로 스키마에 자동 등록하는 셋업 모듈을 내장했습니다.
 
-4. **권한 기반 사용자 통제 (Manager Access Control)**
-   - 커스텀 어드민 플래그(`manager`) 속성이 `"1"`로 세팅된 유저에게만 유저 전체 리스트 조회 및 삭제(CRUD)가 가능한 대시보드 권한을 부여합니다.
-   - 최상위 개발용 번호(`01055787363`)는 부트스트랩 계정으로 지정되어 락아웃(Lock-out)을 방지하며, 관리자는 대시보드에서 다른 가입 유저를 클릭 한 번으로 관리자로 승격(Promote)시키거나 강등(Demote)시킬 수 있습니다.
+4. **3단계 권한 분리 및 사용자 통제 (3-Tier Role Hierarchy: User 0 / Admin 1 / Super 2)**
+   - **일반 회원 (Flag = "0")**: 본인 프로필 관리 및 암호(PIN 번호) 변경 기능, 일반 서브 서비스 이용.
+   - **일반 관리자 (Flag = "1")**: 독립 서브 서비스(Booking, Bus 등)의 관리자 기능 수행 (단, 사용자 권한 관리 기능은 접근 불가).
+   - **최고 관리자 (Super Admin, Flag = "2")**: 중앙 사용자 권한 관리(User CRUD: `/auth/users`), 사용자별 권한 등급(0/1/2) 부여 및 박탈, 회원 탈퇴(삭제) 전용.
+   - 최상위 개발용 번호(`01055787363`)는 부트스트랩 Super 계정으로 보호되며 락아웃(Lock-out)을 방지합니다.
 
 ---
 
 ## 📁 주요 프로젝트 구성 파일
 
-- 🔑 **`keycloak_api.py`**: 자가 갱신 토큰 메커니즘을 내장한 독립적인 Keycloak REST API 래퍼 (비즈니스 서비스 레이어).
-- 🛣️ **`routes.py`**: `/auth` prefix 하위 엔드포인트 세션 제어 및 Jinja2 템플릿 제어 레이어. HTTPOnly Cookie 기반의 안전한 세션(`auth_session`)을 활용합니다.
+- 🔑 **`keycloak_api.py`**: 자가 갱신 토큰 메커니즘, 3단계 권한 플래그 판정, PIN 검증 및 해싱 변경 로직을 내장한 Keycloak REST API 래퍼.
+- 🛣️ **`routes.py`**: `/auth` prefix 하위 엔드포인트 세션 제어 및 Jinja2 템플릿 제어 레이어. 프로필 PIN 변경 검증, Super 전용 사용자 관리 라우트 등을 담당합니다.
 - 🚀 **`main.py`**: ASGI 웹 애플리케이션 엔트리 포인트. 루트 경로(`/`) 접속 시 `/auth/login`으로의 리다이렉션을 관장합니다.
 - 🔐 **`generate_admin_token.py`**: 어드민 로그인 후 오프라인 만료 없는 토큰을 생성해 `.env`를 업데이트하고 비밀번호를 파일에서 파기하는 보안 스크립트.
 - 📋 **`configure_keycloak_schema.py`**: `holyseeds` Realm에 커스텀 속성(`phoneNumber`, `pinNumber`, `manager`)들을 API로 자동 생성 및 허용하는 스키마 구성 도구.
 - 💻 **`keycloak_auth_cli.py`**: CLI 상에서 회원가입 -> 유저 조회 -> PIN 검증 -> 수정 -> 삭제 순서의 전체 가이드라인 흐름을 단독 E2E로 테스트하는 시나리오 검증기.
 - 🖼️ **`templates/`** (Jinja2 HTML 화면 구성):
-  - `login.html`: 깔끔하고 심플한 전화번호 기반 로그인 인터페이스.
-  - `signup.html`: 신규 계정을 간편하게 등록하는 사용자 가입 인터페이스.
-  - `profile.html`: 로그인 성공 시 마주하는 내 프로필 페이지. (관리자일 때만 **관리 대시보드 링크가 특별 오픈**됩니다.)
-  - `users.html`: 전체 가입 유저의 인적 사항을 대조하고, 관리자 권한을 다이내믹하게 할당/박탈하거나 회원을 탈퇴(삭제)시키는 실시간 백오피스 Cockpit.
+  - `login.html`: 깔끔하고 심플한 전화번호 기반 로그인 인터페이스 (비밀번호 토글 버튼 지원).
+  - `signup.html`: 신규 계정을 간편하게 등록하는 사용자 가입 인터페이스 (비밀번호 토글 버튼 지원).
+  - `profile.html`: 로그인 성공 시 마주하는 내 프로필 페이지. (권한 등급 뱃지 표시, **현재 PIN / 새 PIN / 새 PIN 확인 입력 검증 컨트롤**, Super일 때만 대시보드 링크 오픈).
+  - `users.html`: Super(2) 권한 전용 사용자 관리 Cockpit (0=일반, 1=관리자, 2=슈퍼 드롭다운 변경 및 삭제 제어).
 
 ---
 
@@ -46,7 +48,7 @@ FastAPI와 Jinja2 템플릿 엔진을 활용하여 구축되었으며, 로컬 �
 ### 1단계: 환경 변수 설정
 프로젝트 루트 폴더 내의 `.env` 파일에 접속 정보를 세팅합니다:
 ```env
-KEYCLOAK_BASE_URL=https://auth.thewayworks.net
+KEYCLOAK_BASE_URL=https://auth.********.???
 KEYCLOAK_REALM=master
 KEYCLOAK_TARGET_REALM=holyseeds
 

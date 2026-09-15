@@ -149,7 +149,10 @@
             
             <div class="form-group">
                 <label for="pin">PIN 번호 (패스워드)</label>
-                <input type="password" id="pin" name="pin" placeholder="PIN 번호 입력" required>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" id="pin" name="pin" placeholder="PIN 번호 입력" required style="padding-right: 40px;">
+                    <button type="button" onclick="togglePinVisibility()" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 16px; color: #777;" title="비밀번호 보기">👁️</button>
+                </div>
             </div>
             
             <button type="submit" class="btn">로그인</button>
@@ -157,8 +160,23 @@
 
         <div class="links">
             <a href="/auth/signup">신규 회원가입</a>
-            <a href="/auth/users">사용자 리스트 (CRUD)</a>
+            <a href="/auth/users" style="color: #888; font-size: 13px;">관리자 전용 (CRUD)</a>
         </div>
+    </div>
+
+    <script>
+        function togglePinVisibility() {
+            const pinInput = document.getElementById('pin');
+            const btn = event.currentTarget;
+            if (pinInput.type === 'password') {
+                pinInput.type = 'text';
+                btn.textContent = '🔒';
+            } else {
+                pinInput.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+    </script>
     </div>
 </body>
 </html>

@@ -17,7 +17,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 30px 20px;
         }
         .container {
             background-color: #ffffff;
@@ -25,7 +25,7 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
             padding: 40px;
             width: 100%;
-            max-width: 500px;
+            max-width: 520px;
             text-align: center;
         }
         h2 {
@@ -36,11 +36,35 @@
         p.subtitle {
             color: #666666;
             font-size: 14px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 20px;
+            margin-bottom: 20px;
+        }
+        .badge-super {
+            background-color: #f3d9fa;
+            color: #ae3ec9;
+            border: 1px solid #e599f7;
+        }
+        .badge-admin {
+            background-color: #e8f7ff;
+            color: #1c7ed6;
+            border: 1px solid #a5d8ff;
+        }
+        .badge-user {
+            background-color: #f1f3f5;
+            color: #495057;
+            border: 1px solid #ced4da;
         }
         .form-group {
             text-align: left;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
+            position: relative;
         }
         label {
             display: block;
@@ -49,23 +73,81 @@
             font-weight: bold;
             margin-bottom: 6px;
         }
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
         input {
             width: 100%;
-            padding: 12px;
+            padding: 12px 14px;
             border: 1px solid #cccccc;
             border-radius: 6px;
             font-size: 15px;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
             background-color: #fff;
         }
         input:focus {
             outline: none;
             border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
         }
         input[readonly] {
             background-color: #f1f3f5;
             color: #495057;
             cursor: not-allowed;
+        }
+        .toggle-pw-btn {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 6px;
+            color: #777;
+        }
+        .toggle-pw-btn:hover {
+            color: #333;
+        }
+        .section-box {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 18px 16px;
+            margin: 22px 0 16px 0;
+            text-align: left;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-desc {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 14px;
+        }
+        .feedback-text {
+            font-size: 12px;
+            margin-top: 5px;
+            min-height: 16px;
+            display: block;
+        }
+        .feedback-success {
+            color: #2b8a3e;
+            font-weight: bold;
+        }
+        .feedback-error {
+            color: #e03131;
+            font-weight: bold;
+        }
+        .feedback-info {
+            color: #e67700;
         }
         .btn-group {
             display: flex;
@@ -119,10 +201,11 @@
             margin-top: 24px;
             font-size: 14px;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
         }
         .links a {
-            color: #4a90e2;
             text-decoration: none;
             font-weight: bold;
         }
@@ -134,8 +217,18 @@
 <body>
     <div class="container">
         <h2>내 프로필 관리</h2>
-        <p class="subtitle">인증된 회원님의 소중한 개인정보입니다.</p>
+        <p class="subtitle">인증된 회원님의 정보 및 보안 설정을 관리합니다.</p>
         
+        <div>
+            {% if role_flag == '2' %}
+            <span class="badge badge-super">★ 슈퍼 관리자 (Super Admin / 2)</span>
+            {% elif role_flag == '1' %}
+            <span class="badge badge-admin">● 일반 관리자 (Admin / 1)</span>
+            {% else %}
+            <span class="badge badge-user">일반 회원 (0)</span>
+            {% endif %}
+        </div>
+
         {% if error %}
         <div class="alert">
             {{ error }}
@@ -148,7 +241,7 @@
         </div>
         {% endif %}
 
-        <form action="/auth/profile" method="post">
+        <form id="profileForm" action="/auth/profile" method="post" onsubmit="return validateProfileForm();">
             <div class="form-group">
                 <label for="user_id">사용자 UUID (Keycloak ID)</label>
                 <input type="text" id="user_id" value="{{ user.id }}" readonly>
@@ -169,17 +262,139 @@
                 <input type="email" id="email" name="email" value="{{ user.email }}" placeholder="이메일" required>
             </div>
             
+            <!-- PIN / Password Change Section -->
+            <div class="section-box">
+                <div class="section-title">
+                    <span>🔐</span> 암호 (PIN 번호) 변경
+                </div>
+                <div class="section-desc">
+                    PIN 번호를 변경하시려면 현재 PIN과 새 PIN을 입력하세요. (변경하지 않을 경우 빈칸으로 유지)
+                </div>
+
+                <div class="form-group">
+                    <label for="current_pin">현재 PIN 번호</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="current_pin" name="current_pin" placeholder="현재 사용 중인 PIN 번호" autocomplete="current-password">
+                        <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('current_pin', this)" title="비밀번호 보기">👁️</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="new_pin">새 PIN 번호</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="new_pin" name="new_pin" placeholder="새로운 PIN 번호 (4자리 이상)" autocomplete="new-password" oninput="checkPinMatch();">
+                        <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('new_pin', this)" title="비밀번호 보기">👁️</button>
+                    </div>
+                    <span id="new-pin-feedback" class="feedback-text"></span>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 4px;">
+                    <label for="confirm_pin">새 PIN 번호 확인 (입력 검증)</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="confirm_pin" name="confirm_pin" placeholder="새로운 PIN 번호 재입력" autocomplete="new-password" oninput="checkPinMatch();">
+                        <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('confirm_pin', this)" title="비밀번호 보기">👁️</button>
+                    </div>
+                    <span id="confirm-pin-feedback" class="feedback-text"></span>
+                </div>
+            </div>
+            
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">프로필 수정 저장</button>
                 <a href="/auth/logout" class="btn btn-danger" style="text-align: center; text-decoration: none; line-height: 1.2;">로그아웃</a>
             </div>
         </form>
 
-        {% if is_manager %}
-        <div class="links" style="justify-content: center; margin-top: 30px;">
-            <a href="/auth/users" style="color: #2ecc71; font-weight: bold; font-size: 16px;">★ 사용자 권한 관리 (CRUD Dashboard)</a>
+        <div class="links">
+            {% if is_super %}
+            <a href="/auth/users" style="color: #ae3ec9; font-weight: bold; font-size: 15px;">
+                ★ 사용자 권한 관리 대시보드 (Super CRUD) 바로가기 &rarr;
+            </a>
+            {% elif is_manager %}
+            <span style="color: #1c7ed6; font-size: 13px; font-weight: 500;">
+                ✓ 일반 관리자(Admin: 1) 권한 보유 중 (사용자 권한 관리는 Super(2) 전용입니다)
+            </span>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
+
+    <script>
+        function togglePasswordVisibility(fieldId, btn) {
+            const input = document.getElementById(fieldId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🔒';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+
+        function checkPinMatch() {
+            const newPin = document.getElementById('new_pin').value;
+            const confirmPin = document.getElementById('confirm_pin').value;
+            const newFeedback = document.getElementById('new-pin-feedback');
+            const confirmFeedback = document.getElementById('confirm-pin-feedback');
+
+            // Reset
+            newFeedback.textContent = '';
+            newFeedback.className = 'feedback-text';
+            confirmFeedback.textContent = '';
+            confirmFeedback.className = 'feedback-text';
+
+            if (newPin.length > 0) {
+                if (newPin.length < 4) {
+                    newFeedback.textContent = '※ PIN 번호는 최소 4자리 이상을 권장합니다.';
+                    newFeedback.className = 'feedback-text feedback-info';
+                }
+            }
+
+            if (confirmPin.length > 0) {
+                if (newPin === confirmPin) {
+                    confirmFeedback.textContent = '✓ 새 PIN 번호와 확인 번호가 일치합니다.';
+                    confirmFeedback.className = 'feedback-text feedback-success';
+                } else {
+                    confirmFeedback.textContent = '✗ 새 PIN 번호와 확인 번호가 일치하지 않습니다.';
+                    confirmFeedback.className = 'feedback-text feedback-error';
+                }
+            }
+        }
+
+        function validateProfileForm() {
+            const curPin = document.getElementById('current_pin').value.trim();
+            const newPin = document.getElementById('new_pin').value.trim();
+            const confirmPin = document.getElementById('confirm_pin').value.trim();
+
+            // If any PIN field is filled, all PIN validation applies
+            if (curPin || newPin || confirmPin) {
+                if (!curPin) {
+                    alert('PIN 번호를 변경하시려면 현재 사용 중인 PIN 번호를 입력해 주세요.');
+                    document.getElementById('current_pin').focus();
+                    return false;
+                }
+                if (!newPin) {
+                    alert('변경할 새로운 PIN 번호를 입력해 주세요.');
+                    document.getElementById('new_pin').focus();
+                    return false;
+                }
+                if (newPin.length < 4) {
+                    alert('새로운 PIN 번호는 최소 4자리 이상이어야 합니다.');
+                    document.getElementById('new_pin').focus();
+                    return false;
+                }
+                if (!confirmPin) {
+                    alert('새 PIN 번호 확인(검증)란을 입력해 주세요.');
+                    document.getElementById('confirm_pin').focus();
+                    return false;
+                }
+                if (newPin !== confirmPin) {
+                    alert('새 PIN 번호와 확인 번호가 일치하지 않습니다.');
+                    document.getElementById('confirm_pin').focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+    </script>
 </body>
 </html>
