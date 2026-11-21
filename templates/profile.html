@@ -61,6 +61,16 @@
             color: #495057;
             border: 1px solid #ced4da;
         }
+        .badge-dev-leader {
+            background-color: #fff4e6;
+            color: #d9480f;
+            border: 1px solid #ffc078;
+        }
+        .badge-developer {
+            background-color: #ebfbee;
+            color: #2b8a3e;
+            border: 1px solid #8ce99a;
+        }
         .form-group {
             text-align: left;
             margin-bottom: 16px;
@@ -219,13 +229,21 @@
         <h2>내 프로필 관리</h2>
         <p class="subtitle">인증된 회원님의 정보 및 보안 설정을 관리합니다.</p>
         
-        <div>
+        <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
             {% if role_flag == '2' %}
-            <span class="badge badge-super">★ 슈퍼 관리자 (Super Admin / 2)</span>
+            <span class="badge badge-super">★ 슈퍼 관리자 (super / 2)</span>
             {% elif role_flag == '1' %}
-            <span class="badge badge-admin">● 일반 관리자 (Admin / 1)</span>
+            <span class="badge badge-admin">● 일반 관리자 (admin / 1)</span>
             {% else %}
-            <span class="badge badge-user">일반 회원 (0)</span>
+            <span class="badge badge-user">일반 회원 (user / 0)</span>
+            {% endif %}
+
+            {% if developer_flag == '2' %}
+            <span class="badge badge-dev-leader">🛠 개발 리더 (dev-leader / 2)</span>
+            {% elif developer_flag == '1' %}
+            <span class="badge badge-developer">💻 일반 개발자 (developer / 1)</span>
+            {% else %}
+            <span class="badge badge-user">비개발자 (user / 0)</span>
             {% endif %}
         </div>
 
@@ -303,6 +321,21 @@
                 <a href="/auth/logout" class="btn btn-danger" style="text-align: center; text-decoration: none; line-height: 1.2;">로그아웃</a>
             </div>
         </form>
+
+        {% if is_developer and dev_token %}
+        <div class="section-box" style="margin-top: 24px; background-color: #fff9db; border-color: #ffe066;">
+            <div class="section-title" style="color: #e67700;">
+                <span>💻</span> 로컬 개발자 전용 Direct Verification 토큰 ({{ developer_role }})
+            </div>
+            <div class="section-desc" style="color: #5c5f66;">
+                로컬(<code>http://localhost:5000</code> 등)에서 앱 개발 시 외부 콜백 없이 공개 인증앱(<code>/auth/api/dev/verify-session</code>)에 직접 인증 검증을 요청할 때 아래 <code>dev_token</code> 또는 <code>session_id</code>를 사용하세요.
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+                <label for="dev_token_input" style="font-size: 12px; color: #e67700;">서명된 로컬 개발 검증 토큰 (dev_token, 1시간 유효)</label>
+                <input type="text" id="dev_token_input" value="{{ dev_token }}" readonly style="font-family: monospace; font-size: 12px; background-color: #fff;">
+            </div>
+        </div>
+        {% endif %}
 
         <div class="links">
             {% if is_super %}

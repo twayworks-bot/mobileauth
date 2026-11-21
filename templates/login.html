@@ -142,9 +142,15 @@
             {% if redirect %}
             <input type="hidden" name="redirect" value="{{ redirect }}">
             {% endif %}
+            {% if require_role %}
+            <input type="hidden" name="require_role" value="{{ require_role }}">
+            {% endif %}
+            {% if dev_mode %}
+            <input type="hidden" name="dev_mode" value="{{ dev_mode }}">
+            {% endif %}
             <div class="form-group">
                 <label for="phone_number">전화번호 (ID)</label>
-                <input type="text" id="phone_number" name="phone_number" placeholder="예: 01012345678" required>
+                <input type="text" id="phone_number" name="phone_number" value="{{ phone_number or '' }}" placeholder="예: 01012345678" required>
             </div>
             
             <div class="form-group">

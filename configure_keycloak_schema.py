@@ -48,12 +48,23 @@ def main():
         print(" -> Adding 'manager' to profile schema...")
         attributes.append({
             "name": "manager",
-            "displayName": "Manager Flag (1=Admin)",
+            "displayName": "Manager Flag (0=User, 1=Admin, 2=Super)",
             "permissions": default_permissions
         })
         updated = True
     else:
         print(" -> 'manager' already exists in profile schema.")
+
+    if "developer" not in existing_attrs:
+        print(" -> Adding 'developer' to profile schema...")
+        attributes.append({
+            "name": "developer",
+            "displayName": "Developer Flag (0=User, 1=Developer, 2=Dev-Leader)",
+            "permissions": default_permissions
+        })
+        updated = True
+    else:
+        print(" -> 'developer' already exists in profile schema.")
         
     if updated:
         profile["attributes"] = attributes
@@ -66,7 +77,7 @@ def main():
         else:
             print(f"⚠️ Unexpected status when updating: {put_status}, Response: {put_body}")
     else:
-        print("✅ All custom attributes (including 'manager') already exist in the schema. No update needed.")
+        print("✅ All custom attributes (including 'manager' and 'developer') already exist in the schema. No update needed.")
 
 if __name__ == "__main__":
     main()

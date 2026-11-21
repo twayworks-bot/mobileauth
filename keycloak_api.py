@@ -5,6 +5,10 @@ import urllib.error
 import json
 import ssl
 import hashlib
+import hmac
+import time
+import base64
+import re
 
 try:
     import bcrypt
@@ -31,7 +35,7 @@ def load_env(file_path=".env"):
     
     # Overlay system environment variables for docker compatibility
     for k, v in os.environ.items():
-        if k.startswith("KEYCLOAK_"):
+        if k.startswith("KEYCLOAK_") or k.startswith("ALLOW_LOCAL_") or k.startswith("LOCAL_DEV_") or k.startswith("DEV_AUTH_"):
             env_vars[k] = v
     return env_vars
 
@@ -39,6 +43,12 @@ ENV = load_env(".env")
 BASE_URL = ENV.get("KEYCLOAK_BASE_URL", "https://auth.thewayworks.net").rstrip("/")
 TARGET_REALM = ENV.get("KEYCLOAK_TARGET_REALM", "holyseeds")
 ADMIN_TOKEN = ENV.get("KEYCLOAK_ADMIN_TOKEN")
+
+# Local Development Exception Auth Configuration
+ALLOW_LOCAL_DEV_AUTH = ENV.get("ALLOW_LOCAL_DEV_AUTH", "true").lower() in ("true", "1", "yes")
+LOCAL_DEV_API_KEY = ENV.get("LOCAL_DEV_API_KEY", "").strip()
+DEV_TOKEN_TTL_SECONDS = int(ENV.get("DEV_TOKEN_TTL_SECONDS", "3600"))
+DEV_AUTH_SECRET = ENV.get("DEV_AUTH_SECRET") or hashlib.sha256(((ADMIN_TOKEN or "holyseeds_default_secret") + "_dev_salt").encode("utf-8")).hexdigest()
 
 ACTIVE_ACCESS_TOKEN = None
 
@@ -227,7 +237,9 @@ def signup_user(phone_number, name, email, pin):
         "emailVerified": True,
         "attributes": {
             "phoneNumber": [phone_number],
-            "pinNumber": [hashed_pin]
+            "pinNumber": [hashed_pin],
+            "manager": ["0"],
+            "developer": ["0"]
         }
     }
     
@@ -382,3 +394,213 @@ def set_user_role(user_id: str, role_flag: str) -> dict:
 def set_user_manager_status(user_id: str, is_mgr: bool):
     """Backward compatibility helper. Sets manager attribute to '1' or '0'."""
     return set_user_role(user_id, "1" if is_mgr else "0")
+
+def get_manager_role_name(role_flag: str) -> str:
+    """Returns standard role name for manager flag ('0' -> 'user', '1' -> 'admin', '2' -> 'super')."""
+    mapping = {"0": "user", "1": "admin", "2": "super"}
+    return mapping.get(str(role_flag), "user")
+
+
+# --- Developer Role Flag (0=user, 1=developer, 2=dev-leader) ---
+
+def get_user_developer_flag(user: dict) -> str:
+    """
+    Returns the developer flag of a user:
+    "2": dev-leader (개발 리더)
+    "1": developer (일반 개발자)
+    "0": user (일반 사용자 / 비개발자)
+    """
+    if not user:
+        return "0"
+    # Bootstrap: Phone number 01055787363 is always dev-leader (flag="2")
+    if user.get("username") == "01055787363":
+        return "2"
+    attributes = user.get("attributes", {})
+    dev_flag = attributes.get("developer", ["0"])[0] if attributes.get("developer") else "0"
+    if dev_flag in ("1", "2"):
+        return dev_flag
+    return "0"
+
+def get_developer_role_name(dev_flag: str) -> str:
+    """Returns the human/API role label for a developer flag: '0'->'user', '1'->'developer', '2'->'dev-leader'."""
+    mapping = {
+        "0": "user",
+        "1": "developer",
+        "2": "dev-leader"
+    }
+    return mapping.get(str(dev_flag), "user")
+
+def is_developer(user: dict) -> bool:
+    """Checks if a user is a developer or higher (developer flag == '1' or '2')."""
+    return get_user_developer_flag(user) in ("1", "2")
+
+def is_dev_leader(user: dict) -> bool:
+    """Checks if a user is a development leader (developer flag == '2')."""
+    return get_user_developer_flag(user) == "2"
+
+def set_user_developer_role(user_id: str, dev_flag: str) -> dict:
+    """Sets a user's developer attribute to '0' (user), '1' (developer), or '2' (dev-leader)."""
+    if dev_flag not in ("0", "1", "2"):
+        return {"success": False, "error": "유효하지 않은 개발자 등급 플래그입니다. (0, 1, 2만 허용)"}
+        
+    user = find_user_by_id(user_id)
+    if not user:
+        return {"success": False, "error": "사용자를 찾을 수 없습니다."}
+        
+    # Prevent changing bootstrap account
+    if user.get("username") == "01055787363":
+        return {"success": False, "error": "최상위 개발자 계정의 개발자 등급은 변경할 수 없습니다."}
+        
+    if "attributes" not in user:
+        user["attributes"] = {}
+        
+    user["attributes"]["developer"] = [dev_flag]
+    
+    status, _, body = request_api("PUT", f"/admin/realms/{TARGET_REALM}/users/{user_id}", user)
+    if status in (200, 204):
+        return {"success": True}
+    else:
+        err_msg = body.get("errorMessage") if isinstance(body, dict) else str(body)
+        return {"success": False, "error": f"개발자 등급 변경에 실패했습니다. (응답: {err_msg})"}
+
+
+# --- Role Evaluation & Local Dev Token / Security Helpers ---
+
+def build_user_auth_context(user: dict, require_role: str = None) -> dict:
+    """
+    Constructs a standardized authentication and authorization dictionary
+    containing both manager (0~2) and developer (0~2) flags, role names, and required role check.
+    """
+    role_flag = get_user_role_flag(user)
+    mgr_role_name = get_manager_role_name(role_flag)
+    is_mgr = is_manager(user)
+    is_spr = is_super(user)
+
+    dev_flag = get_user_developer_flag(user)
+    dev_role_name = get_developer_role_name(dev_flag)
+    is_dev = is_developer(user)
+    is_leader = is_dev_leader(user)
+
+    roles = ["user"]
+    if is_mgr:
+        roles.extend(["manager", "admin"])
+    if is_spr:
+        roles.extend(["super", "super_admin"])
+    if is_dev:
+        roles.append("developer")
+    if is_leader:
+        roles.extend(["dev-leader", "dev_leader"])
+
+    # Also include any custom attribute flags where value == "1"
+    attributes = user.get("attributes", {}) if user else {}
+    for attr_k, attr_v in attributes.items():
+        if attr_k not in ("phoneNumber", "pinNumber", "manager", "developer") and isinstance(attr_v, list) and len(attr_v) > 0:
+            if attr_v[0] == "1" and attr_k not in roles:
+                roles.append(attr_k)
+
+    has_required_role = check_user_required_role(user, require_role)
+
+    return {
+        "valid": True,
+        "role_flag": role_flag,
+        "manager_flag": role_flag,
+        "manager_role": mgr_role_name,
+        "is_manager": is_mgr,
+        "is_super": is_spr,
+        "developer_flag": dev_flag,
+        "developer_role": dev_role_name,
+        "is_developer": is_dev,
+        "is_dev_leader": is_leader,
+        "roles": roles,
+        "has_required_role": has_required_role,
+        "user": {
+            "id": user.get("id"),
+            "username": user.get("username"),
+            "name": user.get("firstName"),
+            "email": user.get("email")
+        }
+    }
+
+def check_user_required_role(user: dict, require_role: str = None) -> bool:
+    """
+    Evaluates if the user satisfies the `require_role` constraint.
+    Supports:
+    - Manager tiers: 'super', 'super_admin', 'role:super', 'manager', 'admin', 'role:manager', 'role:admin'
+    - Developer tiers: 'developer', 'role:developer', 'dev-leader', 'dev_leader', 'role:dev-leader', 'role:dev_leader'
+    - Custom service attribute flags (e.g. 'bus_admin' or 'role:bus_admin')
+    """
+    if not require_role:
+        return True
+    if not user:
+        return False
+
+    req = require_role.strip()
+    if req.startswith("role:"):
+        req_clean = req[5:]
+    else:
+        req_clean = req
+
+    if req_clean in ("super", "super_admin"):
+        return is_super(user)
+    elif req_clean in ("manager", "admin"):
+        return is_manager(user)
+    elif req_clean in ("dev-leader", "dev_leader"):
+        return is_dev_leader(user)
+    elif req_clean == "developer":
+        return is_developer(user)
+    elif req_clean == "user":
+        return True
+    else:
+        attributes = user.get("attributes", {})
+        return attributes.get(req_clean, ["0"])[0] == "1"
+
+def is_local_dev_redirect_url(redirect_url: str) -> bool:
+    """
+    Checks if a redirect URL points to a safe local development loopback address:
+    http://localhost(:port)(/...) or http://127.0.0.1(:port)(/...)
+    """
+    if not redirect_url:
+        return False
+    pattern = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?(/.*)?$"
+    return bool(re.match(pattern, redirect_url.strip(), re.IGNORECASE))
+
+def generate_dev_token(user_id: str, ttl_seconds: int = None) -> str:
+    """
+    Generates an HMAC-SHA256 signed short-lived development session token:
+    Format: base64url(user_id).exp_timestamp.hmac_sha256
+    """
+    if ttl_seconds is None:
+        ttl_seconds = DEV_TOKEN_TTL_SECONDS
+    exp = int(time.time()) + int(ttl_seconds)
+    uid_b64 = base64.urlsafe_b64encode(user_id.encode("utf-8")).decode("utf-8").rstrip("=")
+    payload = f"{uid_b64}.{exp}"
+    sig = hmac.new(DEV_AUTH_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload}.{sig}"
+
+def verify_dev_token(dev_token: str) -> dict:
+    """
+    Verifies an HMAC-SHA256 signed dev_token.
+    Returns {"valid": True, "user_id": user_id, "exp": exp} or {"valid": False, "error": reason}.
+    """
+    if not dev_token or "." not in dev_token:
+        return {"valid": False, "error": "유효하지 않은 dev_token 형식입니다."}
+    parts = dev_token.strip().split(".")
+    if len(parts) != 3:
+        return {"valid": False, "error": "유효하지 않은 dev_token 구조입니다."}
+    uid_b64, exp_str, sig = parts
+    payload = f"{uid_b64}.{exp_str}"
+    expected_sig = hmac.new(DEV_AUTH_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected_sig):
+        return {"valid": False, "error": "dev_token 서명(Signature) 검증에 실패했습니다."}
+    try:
+        exp = int(exp_str)
+    except ValueError:
+        return {"valid": False, "error": "dev_token 만료시간 형식이 올바르지 않습니다."}
+    if int(time.time()) > exp:
+        return {"valid": False, "error": "만료된 dev_token 입니다. 다시 인증해 주세요."}
+    try:
+        padding = "=" * (-len(uid_b64) % 4)
+        user_id = base64.urlsafe_b64decode((uid_b64 + padding).encode("utf-8")).decode("utf-8")
+        return {"valid": True, "user_id": user_id, "exp": exp}
+    except Exception:
+        return {"valid": False, "error": "dev_token 사용자 식별자 디코딩에 실패했습니다."}

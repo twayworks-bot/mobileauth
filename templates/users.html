@@ -91,6 +91,16 @@
             color: #868e96;
             border: 1px solid #dee2e6;
         }
+        .badge-dev-leader {
+            background-color: #fff4e6;
+            color: #d9480f;
+            border: 1px solid #ffc078;
+        }
+        .badge-developer {
+            background-color: #ebfbee;
+            color: #2b8a3e;
+            border: 1px solid #8ce99a;
+        }
         .role-select {
             padding: 5px 8px;
             border: 1px solid #ced4da;
@@ -205,7 +215,8 @@
                         <th>이름</th>
                         <th>이메일</th>
                         <th>계정 상태 / 현재 권한</th>
-                        <th>권한 등급 설정 (0/1/2)</th>
+                        <th>관리자 등급 (manager: 0~2)</th>
+                        <th>개발자 등급 (developer: 0~2)</th>
                         <th>동작</th>
                     </tr>
                 </thead>
@@ -225,24 +236,46 @@
                                 {% endif %}
                                 <br>
                                 {% if u.role_flag == '2' %}
-                                <span class="badge badge-super" style="margin-top: 4px;">슈퍼관리자 (2)</span>
+                                <span class="badge badge-super" style="margin-top: 4px;">super (2)</span>
                                 {% elif u.role_flag == '1' %}
-                                <span class="badge badge-admin" style="margin-top: 4px;">일반관리자 (1)</span>
+                                <span class="badge badge-admin" style="margin-top: 4px;">admin (1)</span>
                                 {% else %}
-                                <span class="badge badge-user" style="margin-top: 4px;">일반회원 (0)</span>
+                                <span class="badge badge-user" style="margin-top: 4px;">user (0)</span>
+                                {% endif %}
+                                <br>
+                                {% if u.developer_flag == '2' %}
+                                <span class="badge badge-dev-leader" style="margin-top: 4px;">dev-leader (2)</span>
+                                {% elif u.developer_flag == '1' %}
+                                <span class="badge badge-developer" style="margin-top: 4px;">developer (1)</span>
+                                {% else %}
+                                <span class="badge badge-user" style="margin-top: 4px;">비개발자 (0)</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if u.username == '01055787363' %}
-                                <span style="font-size: 12px; color: #ae3ec9; font-weight: bold;">[최상위 개발계정]</span>
+                                <span style="font-size: 12px; color: #ae3ec9; font-weight: bold;">[최상위 super(2)]</span>
                                 {% else %}
                                 <form action="/auth/users/{{ u.id }}/set-role" method="post" style="display:inline-flex; align-items:center; gap: 6px;">
                                     <select name="role" class="role-select">
-                                        <option value="0" {% if u.role_flag == '0' %}selected{% endif %}>일반회원 (0)</option>
-                                        <option value="1" {% if u.role_flag == '1' %}selected{% endif %}>관리자 (1)</option>
-                                        <option value="2" {% if u.role_flag == '2' %}selected{% endif %}>슈퍼관리자 (2)</option>
+                                        <option value="0" {% if u.role_flag == '0' %}selected{% endif %}>일반 user (0)</option>
+                                        <option value="1" {% if u.role_flag == '1' %}selected{% endif %}>admin (1)</option>
+                                        <option value="2" {% if u.role_flag == '2' %}selected{% endif %}>super (2)</option>
                                     </select>
                                     <button type="submit" class="btn-change-role">변경</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if u.username == '01055787363' %}
+                                <span style="font-size: 12px; color: #d9480f; font-weight: bold;">[최상위 dev-leader(2)]</span>
+                                {% else %}
+                                <form action="/auth/users/{{ u.id }}/set-developer" method="post" style="display:inline-flex; align-items:center; gap: 6px;">
+                                    <select name="developer" class="role-select">
+                                        <option value="0" {% if u.developer_flag == '0' %}selected{% endif %}>일반 user (0)</option>
+                                        <option value="1" {% if u.developer_flag == '1' %}selected{% endif %}>developer (1)</option>
+                                        <option value="2" {% if u.developer_flag == '2' %}selected{% endif %}>dev-leader (2)</option>
+                                    </select>
+                                    <button type="submit" class="btn-change-role" style="background-color: #2b8a3e;">변경</button>
                                 </form>
                                 {% endif %}
                             </td>
@@ -261,7 +294,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="7" style="text-align: center; color: #868e96; padding: 30px;">
+                            <td colspan="8" style="text-align: center; color: #868e96; padding: 30px;">
                                 등록된 사용자가 없습니다.
                             </td>
                         </tr>
